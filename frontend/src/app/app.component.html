@@ -95,6 +95,123 @@
       </div>
     </section>
 
+    <section class="decks-panel">
+      <h2>Gestione mazzi</h2>
+
+      <div class="deck-create-form">
+        <h3>Crea nuovo mazzo</h3>
+
+        <div class="form-row">
+          <label>
+            Nome mazzo
+            <input type="text" [(ngModel)]="deckName" placeholder="Esempio: Mono Red Test">
+          </label>
+
+          <label>
+            Formato
+            <select [(ngModel)]="deckFormat">
+              <option value="COMMANDER">Commander</option>
+              <option value="STANDARD">Standard</option>
+              <option value="MODERN">Modern</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="full-label">
+          Descrizione
+          <textarea [(ngModel)]="deckDescription" placeholder="Descrizione del mazzo"></textarea>
+        </label>
+
+        <button type="button" (click)="createDeck()" [disabled]="creatingDeck">
+          {{ creatingDeck ? 'Creazione in corso...' : 'Crea mazzo' }}
+        </button>
+      </div>
+
+      <div class="deck-management">
+        <div class="deck-selection">
+          <h3>I miei mazzi</h3>
+
+          <p class="loading" *ngIf="deckLoading">
+            Caricamento mazzi...
+          </p>
+
+          <div class="form-row" *ngIf="decks.length > 0">
+            <label>
+              Seleziona mazzo
+              <select [(ngModel)]="selectedDeckId" (ngModelChange)="onDeckSelectionChange()">
+                <option [ngValue]="undefined">Seleziona un mazzo</option>
+                <option *ngFor="let deck of decks" [ngValue]="deck.id">
+                  {{ deck.name }} - {{ deck.format }} - {{ deck.totalCards }} carte
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <button type="button" class="danger-button" (click)="deleteSelectedDeck()" *ngIf="selectedDeckId">
+            Elimina mazzo selezionato
+          </button>
+        </div>
+
+        <div class="deck-add-card" *ngIf="selectedDeckId">
+          <h3>Aggiungi carta al mazzo</h3>
+
+          <div class="form-row">
+            <label>
+              Carta dalla collezione
+              <select [(ngModel)]="selectedCollectionItemId">
+                <option [ngValue]="undefined">Seleziona una carta</option>
+                <option *ngFor="let item of collectionItems" [ngValue]="item.id">
+                  {{ item.name }} - disponibili: {{ item.quantity }}
+                </option>
+              </select>
+            </label>
+
+            <label>
+              Quantità
+              <input type="number" min="1" [(ngModel)]="deckCardQuantity">
+            </label>
+
+            <label>
+              Sezione
+              <select [(ngModel)]="deckCardSection">
+                <option value="MAIN_DECK">Main deck</option>
+                <option value="SIDEBOARD">Sideboard</option>
+                <option value="COMMANDER">Commander</option>
+              </select>
+            </label>
+          </div>
+
+          <button type="button" (click)="addCardToDeck()" [disabled]="addingCardToDeck">
+            {{ addingCardToDeck ? 'Aggiunta in corso...' : 'Aggiungi al mazzo' }}
+          </button>
+        </div>
+
+        <div class="deck-card-list" *ngIf="selectedDeckId">
+          <h3>Carte nel mazzo</h3>
+
+          <div class="empty-message" *ngIf="selectedDeckCards.length === 0">
+            Nessuna carta presente nel mazzo selezionato.
+          </div>
+
+          <div class="deck-card-row" *ngFor="let deckCard of selectedDeckCards">
+            <img *ngIf="deckCard.imageUrl" [src]="deckCard.imageUrl" [alt]="deckCard.cardName">
+
+            <div class="deck-card-info">
+              <h4>{{ deckCard.cardName }}</h4>
+              <p><strong>Quantità:</strong> {{ deckCard.quantity }}</p>
+              <p><strong>Sezione:</strong> {{ deckCard.section }}</p>
+              <p><strong>Tipo:</strong> {{ deckCard.typeLine }}</p>
+            </div>
+
+            <button type="button" class="danger-button" (click)="removeDeckCard(deckCard)">
+              Rimuovi dal mazzo
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="collection-panel">
       <div class="collection-header">
         <div>
@@ -127,6 +244,10 @@
             <p><strong>Lingua:</strong> {{ item.language }}</p>
             <p><strong>Condizione:</strong> {{ item.condition }}</p>
             <p><strong>Foil:</strong> {{ item.foil ? 'Sì' : 'No' }}</p>
+
+            <button type="button" class="danger-button" (click)="removeFromCollection(item)">
+              Rimuovi dalla collezione
+            </button>
           </div>
         </article>
       </div>

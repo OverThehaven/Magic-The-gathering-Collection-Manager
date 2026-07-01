@@ -30,4 +30,11 @@ export class CollectionService {
       { headers: this.headers }
     );
   }
+
+  removeCardFromCollection(ownerId: number, collectionItemId: number): Observable<void> {
+    return this.http.delete<void>(
+      `/api/users/${ownerId}/collection/${collectionItemId}`,
+      { headers: this.headers }
+    );
+  }
 }
