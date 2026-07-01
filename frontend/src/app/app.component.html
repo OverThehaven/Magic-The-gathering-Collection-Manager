@@ -94,5 +94,42 @@
         </div>
       </div>
     </section>
+
+    <section class="collection-panel">
+      <div class="collection-header">
+        <div>
+          <h2>La mia collezione</h2>
+          <p>{{ collectionTotalElements }} carte presenti</p>
+        </div>
+
+        <button type="button" (click)="loadCollection()">
+          Aggiorna
+        </button>
+      </div>
+
+      <p class="loading" *ngIf="collectionLoading">
+        Caricamento collezione...
+      </p>
+
+      <div class="empty-message" *ngIf="!collectionLoading && collectionItems.length === 0">
+        Nessuna carta presente nella collezione.
+      </div>
+
+      <div class="collection-grid" *ngIf="!collectionLoading && collectionItems.length > 0">
+        <article class="collection-card" *ngFor="let item of collectionItems">
+          <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name">
+
+          <div class="collection-card-info">
+            <h3>{{ item.name }}</h3>
+            <p><strong>Quantità:</strong> {{ item.quantity }}</p>
+            <p><strong>Espansione:</strong> {{ item.expansion }}</p>
+            <p><strong>Rarità:</strong> {{ item.rarity }}</p>
+            <p><strong>Lingua:</strong> {{ item.language }}</p>
+            <p><strong>Condizione:</strong> {{ item.condition }}</p>
+            <p><strong>Foil:</strong> {{ item.foil ? 'Sì' : 'No' }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
   </main>
 </div>

@@ -2,6 +2,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CollectionItemCreateRequest } from '../models/collection-item-create-request';
+import { CollectionPageResponse } from '../models/collection-page-response';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,13 @@ export class CollectionService {
     return this.http.post<void>(
       `/api/users/${ownerId}/collection/simple`,
       request,
+      { headers: this.headers }
+    );
+  }
+
+  getCollection(ownerId: number): Observable<CollectionPageResponse> {
+    return this.http.get<CollectionPageResponse>(
+      `/api/users/${ownerId}/collection`,
       { headers: this.headers }
     );
   }

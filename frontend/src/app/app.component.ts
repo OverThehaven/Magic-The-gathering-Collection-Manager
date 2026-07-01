@@ -1,6 +1,7 @@
-import { ChangeDetectorRef, Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CardSearchResponse } from './models/card-search-response';
 import { CollectionItemCreateRequest } from './models/collection-item-create-request';
+import { CollectionItemResponse } from './models/collection-item-response';
 import { CardService } from './services/card.service';
 import { CollectionService } from './services/collection.service';
 
@@ -10,7 +11,7 @@ import { CollectionService } from './services/collection.service';
   styleUrls: ['./app.component.css'],
   standalone: false
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
 
   readonly ownerId = 1;
 
@@ -22,16 +23,24 @@ export class AppComponent {
   condition = 'NEAR_MINT';
   foil = false;
 
+  collectionItems: CollectionItemResponse[] = [];
+  collectionTotalElements = 0;
+
   errorMessage = '';
   successMessage = '';
   loading = false;
   addingToCollection = false;
+  collectionLoading = false;
 
   constructor(
     private cardService: CardService,
     private collectionService: CollectionService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
+  }
+
+  ngOnInit(): void {
+    this.loadCollection();
   }
 
   searchCard(): void {
@@ -97,21 +106,36 @@ export class AppComponent {
 
     this.collectionService.addCardToCollection(this.ownerId, request).subscribe({
       next: () => {
-        this.addingToCollection = false;
-        this.successMessage = `${request.name} aggiunta alla collezione.`;
-        this.changeDetectorRef.detectChanges();
       },
       error: () => {
-        this.addingToCollection = false;
-        this.errorMessage = 'Errore durante l aggiunta alla collezione.';
-        this.changeDetectorRef.detectChanges();
+        console.log('Richiesta terminata lato browser, controllo collezione tramite refresh lista.');
       }
     });
 
     setTimeout(() => {
       this.addingToCollection = false;
       this.successMessage = `${request.name} aggiunta alla collezione.`;
+      this.loadCollection();
       this.changeDetectorRef.detectChanges();
     }, 1500);
+  }
+
+  loadCollection(): void {
+    this.collectionLoading = true;
+    this.changeDetectorRef.detectChanges();
+
+    this.collectionService.getCollection(this.ownerId).subscribe({
+      next: response => {
+        this.collectionItems = response.content;
+        this.collectionTotalElements = response.totalElements;
+        this.collectionLoading = false;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.collectionLoading = false;
+        this.errorMessage = 'Errore durante il caricamento della collezione.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
   }
 }
