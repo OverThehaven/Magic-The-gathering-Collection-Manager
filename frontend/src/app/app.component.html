@@ -28,6 +28,10 @@
       <p class="error" *ngIf="errorMessage">
         {{ errorMessage }}
       </p>
+
+      <p class="success" *ngIf="successMessage">
+        {{ successMessage }}
+      </p>
     </section>
 
     <section class="card-result" *ngIf="card as selectedCard">
@@ -46,6 +50,48 @@
         <p class="oracle-text">
           {{ selectedCard.oracleText }}
         </p>
+
+        <div class="collection-form">
+          <h3>Aggiungi alla collezione</h3>
+
+          <div class="form-row">
+            <label>
+              Quantità
+              <input type="number" min="1" [(ngModel)]="quantity">
+            </label>
+
+            <label>
+              Lingua
+              <select [(ngModel)]="language">
+                <option value="ENGLISH">English</option>
+                <option value="ITALIAN">Italian</option>
+                <option value="JAPANESE">Japanese</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Condizione
+              <select [(ngModel)]="condition">
+                <option value="MINT">Mint</option>
+                <option value="NEAR_MINT">Near Mint</option>
+                <option value="EXCELLENT">Excellent</option>
+                <option value="GOOD">Good</option>
+                <option value="PLAYED">Played</option>
+                <option value="POOR">Poor</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" [(ngModel)]="foil">
+            Foil
+          </label>
+
+          <button type="button" (click)="addToCollection()" [disabled]="addingToCollection">
+            {{ addingToCollection ? 'Aggiunta in corso...' : 'Aggiungi alla collezione' }}
+          </button>
+        </div>
       </div>
     </section>
   </main>

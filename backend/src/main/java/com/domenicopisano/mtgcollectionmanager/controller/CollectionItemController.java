@@ -30,6 +30,15 @@ public class CollectionItemController {
         return collectionItemService.addItem(ownerId, request);
     }
 
+    @PostMapping("/simple")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void addItemSimple(
+            @PathVariable Long ownerId,
+            @Valid @RequestBody CollectionItemCreateRequest request
+    ) {
+        collectionItemService.addItem(ownerId, request);
+    }
+
     @GetMapping
     public Page<CollectionItemResponse> getCollection(
             @PathVariable Long ownerId,
