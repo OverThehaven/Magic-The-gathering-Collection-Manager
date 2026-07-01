@@ -24,5 +24,5 @@ public interface DeckCardRepository extends JpaRepository<DeckCard, Long> {
     long countByDeckIdAndSection(Long deckId, DeckCardSection section);
 
     @Query("select coalesce(sum(dc.quantity), 0) from DeckCard dc where dc.deck.id = :deckId")
-    int countTotalCardsByDeckId(@Param("deckId") Long deckId);
+    Long countTotalCardsByDeckId(@Param("deckId") Long deckId);
 }
