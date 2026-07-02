@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CardSearchResponse } from './models/card-search-response';
 import { CollectionItemCreateRequest } from './models/collection-item-create-request';
 import { CollectionItemResponse } from './models/collection-item-response';
@@ -15,15 +15,26 @@ import { DeckService } from './services/deck.service';
 import { MessageService } from './services/message.service';
 import { UserService } from './services/user.service';
 
+type AppSection = 'search' | 'collection' | 'decks' | 'messages';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
   standalone: false
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
 
-  readonly ownerId = 1;
+  loginUsername = '';
+  loginPassword = '';
+  isLoggedIn = false;
+  loginErrorMessage = '';
+
+  currentUserId = 0;
+  currentUsername = '';
+
+  sidebarCollapsed = false;
+  activeSection: AppSection = 'search';
 
   cardName = '';
   card?: CardSearchResponse;
@@ -77,12 +88,109 @@ export class AppComponent implements OnInit {
   ) {
   }
 
-  ngOnInit(): void {
+  login(): void {
+    this.loginErrorMessage = '';
+
+    const username = this.loginUsername.trim().toLowerCase();
+    const password = this.loginPassword;
+
+    if (password !== 'admin') {
+      this.loginErrorMessage = 'Credenziali non valide.';
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    if (username === 'admin' || username === 'domenico') {
+      this.currentUserId = 1;
+      this.currentUsername = 'domenico';
+      this.completeLogin();
+      return;
+    }
+
+    if (username === 'mario') {
+      this.currentUserId = 3;
+      this.currentUsername = 'mario';
+      this.completeLogin();
+      return;
+    }
+
+    this.loginErrorMessage = 'Utente non riconosciuto. Usa domenico / admin oppure mario / admin.';
+    this.changeDetectorRef.detectChanges();
+  }
+
+  completeLogin(): void {
+    this.isLoggedIn = true;
+    this.activeSection = 'search';
+    this.resetLoadedData();
+    this.loadInitialData();
+    this.changeDetectorRef.detectChanges();
+  }
+
+  logout(): void {
+    this.isLoggedIn = false;
+    this.loginUsername = '';
+    this.loginPassword = '';
+    this.currentUserId = 0;
+    this.currentUsername = '';
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.loginErrorMessage = '';
+    this.card = undefined;
+    this.activeSection = 'search';
+    this.resetLoadedData();
+    this.changeDetectorRef.detectChanges();
+  }
+
+  resetLoadedData(): void {
+    this.collectionItems = [];
+    this.collectionTotalElements = 0;
+    this.decks = [];
+    this.selectedDeckId = undefined;
+    this.selectedDeckCards = [];
+    this.selectedCollectionItemId = undefined;
+    this.users = [];
+    this.messageReceiverId = undefined;
+    this.conversationUserId = undefined;
+    this.messageContent = '';
+    this.inboxMessages = [];
+    this.sentMessages = [];
+    this.conversationMessages = [];
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    this.changeDetectorRef.detectChanges();
+  }
+
+  loadInitialData(): void {
     this.loadCollection();
     this.loadDecks();
     this.loadUsers();
     this.loadInbox();
     this.loadSentMessages();
+  }
+
+  changeSection(section: AppSection): void {
+    this.activeSection = section;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    if (section === 'collection') {
+      this.loadCollection();
+    }
+
+    if (section === 'decks') {
+      this.loadDecks();
+    }
+
+    if (section === 'messages') {
+      this.loadUsers();
+      this.loadInbox();
+      this.loadSentMessages();
+      this.loadConversation();
+    }
+
+    this.changeDetectorRef.detectChanges();
   }
 
   searchCard(): void {
@@ -146,7 +254,7 @@ export class AppComponent implements OnInit {
     this.addingToCollection = true;
     this.changeDetectorRef.detectChanges();
 
-    this.collectionService.addCardToCollection(this.ownerId, request).subscribe({
+    this.collectionService.addCardToCollection(this.currentUserId, request).subscribe({
       next: () => {
       },
       error: () => {
@@ -163,10 +271,14 @@ export class AppComponent implements OnInit {
   }
 
   loadCollection(): void {
+    if (!this.isLoggedIn) {
+      return;
+    }
+
     this.collectionLoading = true;
     this.changeDetectorRef.detectChanges();
 
-    this.collectionService.getCollection(this.ownerId).subscribe({
+    this.collectionService.getCollection(this.currentUserId).subscribe({
       next: response => {
         this.collectionItems = response.content;
         this.collectionTotalElements = response.totalElements;
@@ -185,7 +297,7 @@ export class AppComponent implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    this.collectionService.removeCardFromCollection(this.ownerId, item.id).subscribe({
+    this.collectionService.removeCardFromCollection(this.currentUserId, item.id).subscribe({
       next: () => {
         this.successMessage = `${item.name} rimossa dalla collezione.`;
         this.loadCollection();
@@ -220,7 +332,7 @@ export class AppComponent implements OnInit {
     this.creatingDeck = true;
     this.changeDetectorRef.detectChanges();
 
-    this.deckService.createDeck(this.ownerId, request).subscribe({
+    this.deckService.createDeck(this.currentUserId, request).subscribe({
       next: response => {
         this.creatingDeck = false;
         this.successMessage = `Mazzo ${response.name} creato.`;
@@ -239,10 +351,14 @@ export class AppComponent implements OnInit {
   }
 
   loadDecks(): void {
+    if (!this.isLoggedIn) {
+      return;
+    }
+
     this.deckLoading = true;
     this.changeDetectorRef.detectChanges();
 
-    this.deckService.getDecks(this.ownerId).subscribe({
+    this.deckService.getDecks(this.currentUserId).subscribe({
       next: response => {
         this.decks = response.content;
         this.deckLoading = false;
@@ -272,7 +388,7 @@ export class AppComponent implements OnInit {
   }
 
   loadDeckCards(deckId: number): void {
-    this.deckService.getDeckCards(this.ownerId, deckId).subscribe({
+    this.deckService.getDeckCards(this.currentUserId, deckId).subscribe({
       next: response => {
         this.selectedDeckCards = response;
         this.changeDetectorRef.detectChanges();
@@ -317,7 +433,7 @@ export class AppComponent implements OnInit {
     this.addingCardToDeck = true;
     this.changeDetectorRef.detectChanges();
 
-    this.deckService.addCardToDeck(this.ownerId, this.selectedDeckId, request).subscribe({
+    this.deckService.addCardToDeck(this.currentUserId, this.selectedDeckId, request).subscribe({
       next: () => {
         this.addingCardToDeck = false;
         this.successMessage = `${selectedItem?.name ?? 'Carta'} aggiunta al mazzo.`;
@@ -343,7 +459,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    this.deckService.removeCardFromDeck(this.ownerId, this.selectedDeckId, deckCard.id).subscribe({
+    this.deckService.removeCardFromDeck(this.currentUserId, this.selectedDeckId, deckCard.id).subscribe({
       next: () => {
         this.successMessage = `${deckCard.cardName} rimossa dal mazzo.`;
         this.loadDeckCards(this.selectedDeckId!);
@@ -369,7 +485,7 @@ export class AppComponent implements OnInit {
 
     const deckToDelete = this.decks.find(deck => deck.id === this.selectedDeckId);
 
-    this.deckService.deleteDeck(this.ownerId, this.selectedDeckId).subscribe({
+    this.deckService.deleteDeck(this.currentUserId, this.selectedDeckId).subscribe({
       next: () => {
         this.successMessage = `Mazzo ${deckToDelete?.name ?? ''} eliminato.`;
         this.selectedDeckId = undefined;
@@ -385,16 +501,23 @@ export class AppComponent implements OnInit {
   }
 
   loadUsers(): void {
+    if (!this.isLoggedIn) {
+      return;
+    }
+
     this.userService.getUsers().subscribe({
       next: response => {
-        this.users = response.filter(user => user.id !== this.ownerId && user.enabled);
+        this.users = response.filter(user => user.id !== this.currentUserId && user.enabled);
+
         if (!this.messageReceiverId && this.users.length > 0) {
           this.messageReceiverId = this.users[0].id;
         }
+
         if (!this.conversationUserId && this.users.length > 0) {
           this.conversationUserId = this.users[0].id;
           this.loadConversation();
         }
+
         this.changeDetectorRef.detectChanges();
       },
       error: () => {
@@ -430,11 +553,12 @@ export class AppComponent implements OnInit {
     this.sendingMessage = true;
     this.changeDetectorRef.detectChanges();
 
-    this.messageService.sendMessage(this.ownerId, request).subscribe({
+    this.messageService.sendMessage(this.currentUserId, request).subscribe({
       next: () => {
         this.sendingMessage = false;
         this.successMessage = `Messaggio inviato a ${receiver?.username ?? 'utente'}.`;
         this.messageContent = '';
+        this.conversationUserId = this.messageReceiverId;
         this.loadSentMessages();
         this.loadConversation();
         this.changeDetectorRef.detectChanges();
@@ -448,10 +572,14 @@ export class AppComponent implements OnInit {
   }
 
   loadInbox(): void {
+    if (!this.isLoggedIn) {
+      return;
+    }
+
     this.messageLoading = true;
     this.changeDetectorRef.detectChanges();
 
-    this.messageService.getInbox(this.ownerId).subscribe({
+    this.messageService.getInbox(this.currentUserId).subscribe({
       next: response => {
         this.inboxMessages = response.content;
         this.messageLoading = false;
@@ -466,7 +594,11 @@ export class AppComponent implements OnInit {
   }
 
   loadSentMessages(): void {
-    this.messageService.getSentMessages(this.ownerId).subscribe({
+    if (!this.isLoggedIn) {
+      return;
+    }
+
+    this.messageService.getSentMessages(this.currentUserId).subscribe({
       next: response => {
         this.sentMessages = response.content;
         this.changeDetectorRef.detectChanges();
@@ -479,13 +611,17 @@ export class AppComponent implements OnInit {
   }
 
   loadConversation(): void {
+    if (!this.isLoggedIn) {
+      return;
+    }
+
     if (!this.conversationUserId) {
       this.conversationMessages = [];
       this.changeDetectorRef.detectChanges();
       return;
     }
 
-    this.messageService.getConversation(this.ownerId, this.conversationUserId).subscribe({
+    this.messageService.getConversation(this.currentUserId, this.conversationUserId).subscribe({
       next: response => {
         this.conversationMessages = response;
         this.changeDetectorRef.detectChanges();
@@ -501,7 +637,7 @@ export class AppComponent implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    this.messageService.markAsRead(this.ownerId, message.id).subscribe({
+    this.messageService.markAsRead(this.currentUserId, message.id).subscribe({
       next: () => {
         this.successMessage = 'Messaggio segnato come letto.';
         this.loadInbox();

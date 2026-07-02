@@ -1,95 +1,351 @@
-<div class="page-container">
-  <header class="header">
-    <h1>MTG Collection Manager</h1>
-    <p>Gestione collezione, mazzi e messaggi di Magic: The Gathering</p>
-  </header>
+<div class="login-page" *ngIf="!isLoggedIn">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="mana-logo">✦</div>
+      <h1>MTG Collection Manager</h1>
+      <p>Gestisci collezione, mazzi e messaggi in un'unica applicazione.</p>
+    </div>
 
-  <main class="content">
-    <section class="search-panel">
-      <h2>Ricerca carta</h2>
+    <div class="login-form">
+      <label>
+        Username
+        <input type="text" [(ngModel)]="loginUsername" placeholder="domenico oppure mario" (keyup.enter)="login()">
+      </label>
 
-      <div class="search-form">
-        <input
-          type="text"
-          [(ngModel)]="cardName"
-          placeholder="Esempio: Lightning Bolt"
-          (keyup.enter)="searchCard()"
-        >
+      <label>
+        Password
+        <input type="password" [(ngModel)]="loginPassword" placeholder="admin" (keyup.enter)="login()">
+      </label>
 
-        <button type="button" (click)="searchCard()">
-          Cerca
-        </button>
+      <p class="login-error" *ngIf="loginErrorMessage">{{ loginErrorMessage }}</p>
+
+      <button type="button" (click)="login()">Accedi</button>
+
+      <div class="demo-accounts">
+        <p>Account demo:</p>
+        <span>domenico / admin</span>
+        <span>mario / admin</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed" *ngIf="isLoggedIn">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mana-logo small">✦</div>
+      <div class="brand-text">
+        <h2>MTG Manager</h2>
+        <p>{{ currentUsername }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed ? 'Apri menu' : 'Chiudi menu'">
+      <span>{{ sidebarCollapsed ? '☰' : '←' }}</span>
+      <span class="nav-label">{{ sidebarCollapsed ? '' : 'Chiudi menu' }}</span>
+    </button>
+
+    <nav class="sidebar-nav">
+      <button type="button" [class.active]="activeSection === 'search'" (click)="changeSection('search')" title="Ricerca carte">
+        <span class="nav-icon">⌕</span>
+        <span class="nav-label">Ricerca carte</span>
+      </button>
+
+      <button type="button" [class.active]="activeSection === 'collection'" (click)="changeSection('collection')" title="Collezione">
+        <span class="nav-icon">▣</span>
+        <span class="nav-label">Collezione</span>
+      </button>
+
+      <button type="button" [class.active]="activeSection === 'decks'" (click)="changeSection('decks')" title="Mazzi">
+        <span class="nav-icon">▤</span>
+        <span class="nav-label">Mazzi</span>
+      </button>
+
+      <button type="button" [class.active]="activeSection === 'messages'" (click)="changeSection('messages')" title="Messaggi">
+        <span class="nav-icon">✉</span>
+        <span class="nav-label">Messaggi</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button type="button" class="logout-button" (click)="logout()" title="Logout">
+        <span class="nav-icon">↪</span>
+        <span class="nav-label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Account attivo: {{ currentUsername }}</p>
+        <h1 *ngIf="activeSection === 'search'">Ricerca carte</h1>
+        <h1 *ngIf="activeSection === 'collection'">La mia collezione</h1>
+        <h1 *ngIf="activeSection === 'decks'">Gestione mazzi</h1>
+        <h1 *ngIf="activeSection === 'messages'">Messaggi tra utenti</h1>
       </div>
 
-      <p class="loading" *ngIf="loading">Ricerca in corso...</p>
+      <div class="topbar-stats">
+        <div>
+          <strong>{{ collectionTotalElements }}</strong>
+          <span>carte</span>
+        </div>
+        <div>
+          <strong>{{ decks.length }}</strong>
+          <span>mazzi</span>
+        </div>
+        <div>
+          <strong>{{ inboxMessages.length }}</strong>
+          <span>ricevuti</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="feedback-panel" *ngIf="errorMessage || successMessage">
       <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
       <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
     </section>
 
-    <section class="card-result" *ngIf="card as selectedCard">
-      <div class="card-image" *ngIf="selectedCard.imageUrl">
-        <img [src]="selectedCard.imageUrl" [alt]="selectedCard.name">
+    <section class="section-content" *ngIf="activeSection === 'search'">
+      <div class="hero-card">
+        <div>
+          <p class="eyebrow">Scryfall integration</p>
+          <h2>Cerca una carta Magic</h2>
+          <p>Inserisci il nome di una carta e aggiungila direttamente alla collezione dell'account attivo.</p>
+        </div>
+
+        <div class="search-form">
+          <input type="text" [(ngModel)]="cardName" placeholder="Esempio: Lightning Bolt" (keyup.enter)="searchCard()">
+          <button type="button" (click)="searchCard()">{{ loading ? 'Ricerca...' : 'Cerca' }}</button>
+        </div>
       </div>
 
-      <div class="card-info">
-        <h2>{{ selectedCard.name }}</h2>
-        <p><strong>Espansione:</strong> {{ selectedCard.expansion }}</p>
-        <p><strong>Rarità:</strong> {{ selectedCard.rarity }}</p>
-        <p><strong>Costo mana:</strong> {{ selectedCard.manaCost }}</p>
-        <p><strong>Tipo:</strong> {{ selectedCard.typeLine }}</p>
+      <div class="card-detail" *ngIf="card as selectedCard">
+        <div class="card-preview" *ngIf="selectedCard.imageUrl">
+          <img [src]="selectedCard.imageUrl" [alt]="selectedCard.name">
+        </div>
 
-        <p class="oracle-text">{{ selectedCard.oracleText }}</p>
+        <div class="card-data-panel">
+          <p class="eyebrow">Risultato ricerca</p>
+          <h2>{{ selectedCard.name }}</h2>
 
-        <div class="collection-form">
-          <h3>Aggiungi alla collezione</h3>
+          <div class="detail-grid">
+            <p><strong>Espansione</strong><span>{{ selectedCard.expansion }}</span></p>
+            <p><strong>Rarità</strong><span>{{ selectedCard.rarity }}</span></p>
+            <p><strong>Costo mana</strong><span>{{ selectedCard.manaCost }}</span></p>
+            <p><strong>Tipo</strong><span>{{ selectedCard.typeLine }}</span></p>
+          </div>
+
+          <p class="oracle-text">{{ selectedCard.oracleText }}</p>
+
+          <div class="compact-form">
+            <h3>Aggiungi alla collezione</h3>
+
+            <div class="form-row">
+              <label>
+                Quantità
+                <input type="number" min="1" [(ngModel)]="quantity">
+              </label>
+
+              <label>
+                Lingua
+                <select [(ngModel)]="language">
+                  <option value="ENGLISH">English</option>
+                  <option value="ITALIAN">Italian</option>
+                  <option value="JAPANESE">Japanese</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </label>
+
+              <label>
+                Condizione
+                <select [(ngModel)]="condition">
+                  <option value="MINT">Mint</option>
+                  <option value="NEAR_MINT">Near Mint</option>
+                  <option value="EXCELLENT">Excellent</option>
+                  <option value="GOOD">Good</option>
+                  <option value="PLAYED">Played</option>
+                  <option value="POOR">Poor</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" [(ngModel)]="foil">
+              Foil
+            </label>
+
+            <button type="button" (click)="addToCollection()" [disabled]="addingToCollection">
+              {{ addingToCollection ? 'Aggiunta in corso...' : 'Aggiungi alla collezione' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-content" *ngIf="activeSection === 'collection'">
+      <div class="section-toolbar">
+        <div>
+          <p class="eyebrow">Collection</p>
+          <h2>{{ collectionTotalElements }} carte nella collezione di {{ currentUsername }}</h2>
+        </div>
+
+        <button type="button" (click)="loadCollection()">Aggiorna</button>
+      </div>
+
+      <p class="loading" *ngIf="collectionLoading">Caricamento collezione...</p>
+
+      <div class="empty-state" *ngIf="!collectionLoading && collectionItems.length === 0">
+        Nessuna carta presente nella collezione.
+      </div>
+
+      <div class="collection-grid" *ngIf="!collectionLoading && collectionItems.length > 0">
+        <article class="collection-card" *ngFor="let item of collectionItems">
+          <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name">
+
+          <div class="collection-card-info">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.expansion }}</p>
+
+            <div class="pill-row">
+              <span>{{ item.rarity }}</span>
+              <span>qty {{ item.quantity }}</span>
+              <span>{{ item.language }}</span>
+            </div>
+
+            <p class="small-text">{{ item.condition }} · {{ item.foil ? 'Foil' : 'Non foil' }}</p>
+
+            <button type="button" class="danger-button" (click)="removeFromCollection(item)">
+              Rimuovi
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-content" *ngIf="activeSection === 'decks'">
+      <div class="two-column-layout">
+        <div class="panel-card">
+          <p class="eyebrow">Deck builder</p>
+          <h2>Crea nuovo mazzo</h2>
 
           <div class="form-row">
             <label>
-              Quantità
-              <input type="number" min="1" [(ngModel)]="quantity">
+              Nome mazzo
+              <input type="text" [(ngModel)]="deckName" placeholder="Esempio: Mono Red">
             </label>
 
             <label>
-              Lingua
-              <select [(ngModel)]="language">
-                <option value="ENGLISH">English</option>
-                <option value="ITALIAN">Italian</option>
-                <option value="JAPANESE">Japanese</option>
+              Formato
+              <select [(ngModel)]="deckFormat">
+                <option value="COMMANDER">Commander</option>
+                <option value="STANDARD">Standard</option>
+                <option value="MODERN">Modern</option>
                 <option value="OTHER">Other</option>
-              </select>
-            </label>
-
-            <label>
-              Condizione
-              <select [(ngModel)]="condition">
-                <option value="MINT">Mint</option>
-                <option value="NEAR_MINT">Near Mint</option>
-                <option value="EXCELLENT">Excellent</option>
-                <option value="GOOD">Good</option>
-                <option value="PLAYED">Played</option>
-                <option value="POOR">Poor</option>
               </select>
             </label>
           </div>
 
-          <label class="checkbox-row">
-            <input type="checkbox" [(ngModel)]="foil">
-            Foil
+          <label class="full-label">
+            Descrizione
+            <textarea [(ngModel)]="deckDescription" placeholder="Descrizione del mazzo"></textarea>
           </label>
 
-          <button type="button" (click)="addToCollection()" [disabled]="addingToCollection">
-            {{ addingToCollection ? 'Aggiunta in corso...' : 'Aggiungi alla collezione' }}
+          <button type="button" (click)="createDeck()" [disabled]="creatingDeck">
+            {{ creatingDeck ? 'Creazione...' : 'Crea mazzo' }}
+          </button>
+        </div>
+
+        <div class="panel-card">
+          <p class="eyebrow">Deck list</p>
+          <h2>I mazzi di {{ currentUsername }}</h2>
+
+          <p class="loading" *ngIf="deckLoading">Caricamento mazzi...</p>
+
+          <label class="full-label" *ngIf="decks.length > 0">
+            Seleziona mazzo
+            <select [(ngModel)]="selectedDeckId" (ngModelChange)="onDeckSelectionChange()">
+              <option [ngValue]="undefined">Seleziona un mazzo</option>
+              <option *ngFor="let deck of decks" [ngValue]="deck.id">
+                {{ deck.name }} - {{ deck.format }} - {{ deck.totalCards }} carte
+              </option>
+            </select>
+          </label>
+
+          <button type="button" class="danger-button" (click)="deleteSelectedDeck()" *ngIf="selectedDeckId">
+            Elimina mazzo selezionato
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-card" *ngIf="selectedDeckId">
+        <p class="eyebrow">Add card</p>
+        <h2>Aggiungi carta al mazzo</h2>
+
+        <div class="form-row">
+          <label>
+            Carta dalla collezione
+            <select [(ngModel)]="selectedCollectionItemId">
+              <option [ngValue]="undefined">Seleziona una carta</option>
+              <option *ngFor="let item of collectionItems" [ngValue]="item.id">
+                {{ item.name }} - disponibili: {{ item.quantity }}
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Quantità
+            <input type="number" min="1" [(ngModel)]="deckCardQuantity">
+          </label>
+
+          <label>
+            Sezione
+            <select [(ngModel)]="deckCardSection">
+              <option value="MAIN_DECK">Main deck</option>
+              <option value="SIDEBOARD">Sideboard</option>
+              <option value="COMMANDER">Commander</option>
+            </select>
+          </label>
+        </div>
+
+        <button type="button" (click)="addCardToDeck()" [disabled]="addingCardToDeck">
+          {{ addingCardToDeck ? 'Aggiunta...' : 'Aggiungi al mazzo' }}
+        </button>
+      </div>
+
+      <div class="panel-card" *ngIf="selectedDeckId">
+        <p class="eyebrow">Deck cards</p>
+        <h2>Carte nel mazzo</h2>
+
+        <div class="empty-state" *ngIf="selectedDeckCards.length === 0">
+          Nessuna carta presente nel mazzo selezionato.
+        </div>
+
+        <div class="deck-card-row" *ngFor="let deckCard of selectedDeckCards">
+          <img *ngIf="deckCard.imageUrl" [src]="deckCard.imageUrl" [alt]="deckCard.cardName">
+
+          <div class="deck-card-info">
+            <h3>{{ deckCard.cardName }}</h3>
+            <p>{{ deckCard.typeLine }}</p>
+
+            <div class="pill-row">
+              <span>qty {{ deckCard.quantity }}</span>
+              <span>{{ deckCard.section }}</span>
+            </div>
+          </div>
+
+          <button type="button" class="danger-button" (click)="removeDeckCard(deckCard)">
+            Rimuovi
           </button>
         </div>
       </div>
     </section>
 
-    <section class="messages-panel">
-      <h2>Messaggi tra utenti</h2>
-
-      <div class="message-layout">
-        <div class="message-box">
-          <h3>Invia messaggio</h3>
+    <section class="section-content" *ngIf="activeSection === 'messages'">
+      <div class="two-column-layout">
+        <div class="panel-card">
+          <p class="eyebrow">New message</p>
+          <h2>Invia messaggio come {{ currentUsername }}</h2>
 
           <label class="full-label">
             Destinatario
@@ -107,19 +363,23 @@
           </label>
 
           <button type="button" (click)="sendMessage()" [disabled]="sendingMessage">
-            {{ sendingMessage ? 'Invio in corso...' : 'Invia messaggio' }}
+            {{ sendingMessage ? 'Invio...' : 'Invia messaggio' }}
           </button>
         </div>
 
-        <div class="message-box">
-          <div class="box-header">
-            <h3>Posta ricevuta</h3>
+        <div class="panel-card">
+          <div class="section-toolbar compact">
+            <div>
+              <p class="eyebrow">Inbox</p>
+              <h2>Posta ricevuta</h2>
+            </div>
+
             <button type="button" (click)="loadInbox()">Aggiorna</button>
           </div>
 
           <p class="loading" *ngIf="messageLoading">Caricamento messaggi...</p>
 
-          <div class="empty-message" *ngIf="!messageLoading && inboxMessages.length === 0">
+          <div class="empty-state" *ngIf="!messageLoading && inboxMessages.length === 0">
             Nessun messaggio ricevuto.
           </div>
 
@@ -129,25 +389,25 @@
             <p class="small-text">Inviato il: {{ message.sentAt }}</p>
             <p class="small-text"><strong>Letto:</strong> {{ message.readMessage ? 'Sì' : 'No' }}</p>
 
-            <button
-              type="button"
-              *ngIf="!message.readMessage"
-              (click)="markMessageAsRead(message)"
-            >
+            <button type="button" *ngIf="!message.readMessage" (click)="markMessageAsRead(message)">
               Segna come letto
             </button>
           </div>
         </div>
       </div>
 
-      <div class="message-layout">
-        <div class="message-box">
-          <div class="box-header">
-            <h3>Messaggi inviati</h3>
+      <div class="two-column-layout">
+        <div class="panel-card">
+          <div class="section-toolbar compact">
+            <div>
+              <p class="eyebrow">Sent</p>
+              <h2>Messaggi inviati</h2>
+            </div>
+
             <button type="button" (click)="loadSentMessages()">Aggiorna</button>
           </div>
 
-          <div class="empty-message" *ngIf="sentMessages.length === 0">
+          <div class="empty-state" *ngIf="sentMessages.length === 0">
             Nessun messaggio inviato.
           </div>
 
@@ -159,8 +419,9 @@
           </div>
         </div>
 
-        <div class="message-box">
-          <h3>Conversazione</h3>
+        <div class="panel-card">
+          <p class="eyebrow">Conversation</p>
+          <h2>Conversazione</h2>
 
           <label class="full-label">
             Utente
@@ -172,179 +433,20 @@
             </select>
           </label>
 
-          <div class="empty-message" *ngIf="conversationMessages.length === 0">
+          <div class="empty-state" *ngIf="conversationMessages.length === 0">
             Nessun messaggio nella conversazione.
           </div>
 
-          <div class="conversation-list" *ngIf="conversationMessages.length > 0">
-            <div
-              class="message-card"
-              *ngFor="let message of conversationMessages"
-              [class.own-message]="message.senderId === ownerId"
-              [class.unread]="!message.readMessage && message.receiverId === ownerId"
-            >
-              <p>
-                <strong>{{ message.senderUsername }}</strong>
-                →
-                <strong>{{ message.receiverUsername }}</strong>
-              </p>
-              <p>{{ message.content }}</p>
-              <p class="small-text">{{ message.sentAt }}</p>
-            </div>
+          <div class="message-card" *ngFor="let message of conversationMessages" [class.own-message]="message.senderId === currentUserId">
+            <p>
+              <strong>{{ message.senderUsername }}</strong>
+              →
+              <strong>{{ message.receiverUsername }}</strong>
+            </p>
+            <p>{{ message.content }}</p>
+            <p class="small-text">{{ message.sentAt }}</p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="decks-panel">
-      <h2>Gestione mazzi</h2>
-
-      <div class="deck-create-form">
-        <h3>Crea nuovo mazzo</h3>
-
-        <div class="form-row">
-          <label>
-            Nome mazzo
-            <input type="text" [(ngModel)]="deckName" placeholder="Esempio: Mono Red Test">
-          </label>
-
-          <label>
-            Formato
-            <select [(ngModel)]="deckFormat">
-              <option value="COMMANDER">Commander</option>
-              <option value="STANDARD">Standard</option>
-              <option value="MODERN">Modern</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </label>
-        </div>
-
-        <label class="full-label">
-          Descrizione
-          <textarea [(ngModel)]="deckDescription" placeholder="Descrizione del mazzo"></textarea>
-        </label>
-
-        <button type="button" (click)="createDeck()" [disabled]="creatingDeck">
-          {{ creatingDeck ? 'Creazione in corso...' : 'Crea mazzo' }}
-        </button>
-      </div>
-
-      <div class="deck-management">
-        <div class="deck-selection">
-          <h3>I miei mazzi</h3>
-
-          <p class="loading" *ngIf="deckLoading">Caricamento mazzi...</p>
-
-          <div class="form-row" *ngIf="decks.length > 0">
-            <label>
-              Seleziona mazzo
-              <select [(ngModel)]="selectedDeckId" (ngModelChange)="onDeckSelectionChange()">
-                <option [ngValue]="undefined">Seleziona un mazzo</option>
-                <option *ngFor="let deck of decks" [ngValue]="deck.id">
-                  {{ deck.name }} - {{ deck.format }} - {{ deck.totalCards }} carte
-                </option>
-              </select>
-            </label>
-          </div>
-
-          <button type="button" class="danger-button" (click)="deleteSelectedDeck()" *ngIf="selectedDeckId">
-            Elimina mazzo selezionato
-          </button>
-        </div>
-
-        <div class="deck-add-card" *ngIf="selectedDeckId">
-          <h3>Aggiungi carta al mazzo</h3>
-
-          <div class="form-row">
-            <label>
-              Carta dalla collezione
-              <select [(ngModel)]="selectedCollectionItemId">
-                <option [ngValue]="undefined">Seleziona una carta</option>
-                <option *ngFor="let item of collectionItems" [ngValue]="item.id">
-                  {{ item.name }} - disponibili: {{ item.quantity }}
-                </option>
-              </select>
-            </label>
-
-            <label>
-              Quantità
-              <input type="number" min="1" [(ngModel)]="deckCardQuantity">
-            </label>
-
-            <label>
-              Sezione
-              <select [(ngModel)]="deckCardSection">
-                <option value="MAIN_DECK">Main deck</option>
-                <option value="SIDEBOARD">Sideboard</option>
-                <option value="COMMANDER">Commander</option>
-              </select>
-            </label>
-          </div>
-
-          <button type="button" (click)="addCardToDeck()" [disabled]="addingCardToDeck">
-            {{ addingCardToDeck ? 'Aggiunta in corso...' : 'Aggiungi al mazzo' }}
-          </button>
-        </div>
-
-        <div class="deck-card-list" *ngIf="selectedDeckId">
-          <h3>Carte nel mazzo</h3>
-
-          <div class="empty-message" *ngIf="selectedDeckCards.length === 0">
-            Nessuna carta presente nel mazzo selezionato.
-          </div>
-
-          <div class="deck-card-row" *ngFor="let deckCard of selectedDeckCards">
-            <img *ngIf="deckCard.imageUrl" [src]="deckCard.imageUrl" [alt]="deckCard.cardName">
-
-            <div class="deck-card-info">
-              <h4>{{ deckCard.cardName }}</h4>
-              <p><strong>Quantità:</strong> {{ deckCard.quantity }}</p>
-              <p><strong>Sezione:</strong> {{ deckCard.section }}</p>
-              <p><strong>Tipo:</strong> {{ deckCard.typeLine }}</p>
-            </div>
-
-            <button type="button" class="danger-button" (click)="removeDeckCard(deckCard)">
-              Rimuovi dal mazzo
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="collection-panel">
-      <div class="collection-header">
-        <div>
-          <h2>La mia collezione</h2>
-          <p>{{ collectionTotalElements }} carte presenti</p>
-        </div>
-
-        <button type="button" (click)="loadCollection()">Aggiorna</button>
-      </div>
-
-      <p class="loading" *ngIf="collectionLoading">Caricamento collezione...</p>
-
-      <div class="empty-message" *ngIf="!collectionLoading && collectionItems.length === 0">
-        Nessuna carta presente nella collezione.
-      </div>
-
-      <div class="collection-grid" *ngIf="!collectionLoading && collectionItems.length > 0">
-        <article class="collection-card" *ngFor="let item of collectionItems">
-          <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name">
-
-          <div class="collection-card-info">
-            <h3>{{ item.name }}</h3>
-            <p><strong>Quantità:</strong> {{ item.quantity }}</p>
-            <p><strong>Espansione:</strong> {{ item.expansion }}</p>
-            <p><strong>Rarità:</strong> {{ item.rarity }}</p>
-            <p><strong>Lingua:</strong> {{ item.language }}</p>
-            <p><strong>Condizione:</strong> {{ item.condition }}</p>
-            <p><strong>Foil:</strong> {{ item.foil ? 'Sì' : 'No' }}</p>
-
-            <button type="button" class="danger-button" (click)="removeFromCollection(item)">
-              Rimuovi dalla collezione
-            </button>
-          </div>
-        </article>
       </div>
     </section>
   </main>
