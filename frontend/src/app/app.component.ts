@@ -6,9 +6,14 @@ import { DeckCardAddRequest } from './models/deck-card-add-request';
 import { DeckCardResponse } from './models/deck-card-response';
 import { DeckCreateRequest } from './models/deck-create-request';
 import { DeckResponse } from './models/deck-response';
+import { MessageCreateRequest } from './models/message-create-request';
+import { MessageResponse } from './models/message-response';
+import { UserProfileResponse } from './models/user-profile-response';
 import { CardService } from './services/card.service';
 import { CollectionService } from './services/collection.service';
 import { DeckService } from './services/deck.service';
+import { MessageService } from './services/message.service';
+import { UserService } from './services/user.service';
 
 @Component({
   selector: 'app-root',
@@ -42,6 +47,14 @@ export class AppComponent implements OnInit {
   deckCardQuantity = 1;
   deckCardSection = 'MAIN_DECK';
 
+  users: UserProfileResponse[] = [];
+  messageReceiverId?: number;
+  conversationUserId?: number;
+  messageContent = '';
+  inboxMessages: MessageResponse[] = [];
+  sentMessages: MessageResponse[] = [];
+  conversationMessages: MessageResponse[] = [];
+
   errorMessage = '';
   successMessage = '';
 
@@ -51,11 +64,15 @@ export class AppComponent implements OnInit {
   deckLoading = false;
   creatingDeck = false;
   addingCardToDeck = false;
+  messageLoading = false;
+  sendingMessage = false;
 
   constructor(
     private cardService: CardService,
     private collectionService: CollectionService,
     private deckService: DeckService,
+    private userService: UserService,
+    private messageService: MessageService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
   }
@@ -63,6 +80,9 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     this.loadCollection();
     this.loadDecks();
+    this.loadUsers();
+    this.loadInbox();
+    this.loadSentMessages();
   }
 
   searchCard(): void {
@@ -359,6 +379,137 @@ export class AppComponent implements OnInit {
       },
       error: () => {
         this.errorMessage = 'Errore durante l eliminazione del mazzo.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  loadUsers(): void {
+    this.userService.getUsers().subscribe({
+      next: response => {
+        this.users = response.filter(user => user.id !== this.ownerId && user.enabled);
+        if (!this.messageReceiverId && this.users.length > 0) {
+          this.messageReceiverId = this.users[0].id;
+        }
+        if (!this.conversationUserId && this.users.length > 0) {
+          this.conversationUserId = this.users[0].id;
+          this.loadConversation();
+        }
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Errore durante il caricamento degli utenti.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  sendMessage(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    if (!this.messageReceiverId) {
+      this.errorMessage = 'Seleziona un destinatario.';
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    if (!this.messageContent.trim()) {
+      this.errorMessage = 'Scrivi il contenuto del messaggio.';
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    const receiver = this.users.find(user => user.id === this.messageReceiverId);
+
+    const request: MessageCreateRequest = {
+      receiverId: this.messageReceiverId,
+      content: this.messageContent
+    };
+
+    this.sendingMessage = true;
+    this.changeDetectorRef.detectChanges();
+
+    this.messageService.sendMessage(this.ownerId, request).subscribe({
+      next: () => {
+        this.sendingMessage = false;
+        this.successMessage = `Messaggio inviato a ${receiver?.username ?? 'utente'}.`;
+        this.messageContent = '';
+        this.loadSentMessages();
+        this.loadConversation();
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.sendingMessage = false;
+        this.errorMessage = 'Errore durante l invio del messaggio.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  loadInbox(): void {
+    this.messageLoading = true;
+    this.changeDetectorRef.detectChanges();
+
+    this.messageService.getInbox(this.ownerId).subscribe({
+      next: response => {
+        this.inboxMessages = response.content;
+        this.messageLoading = false;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.messageLoading = false;
+        this.errorMessage = 'Errore durante il caricamento della posta ricevuta.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  loadSentMessages(): void {
+    this.messageService.getSentMessages(this.ownerId).subscribe({
+      next: response => {
+        this.sentMessages = response.content;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Errore durante il caricamento dei messaggi inviati.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  loadConversation(): void {
+    if (!this.conversationUserId) {
+      this.conversationMessages = [];
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    this.messageService.getConversation(this.ownerId, this.conversationUserId).subscribe({
+      next: response => {
+        this.conversationMessages = response;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Errore durante il caricamento della conversazione.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  markMessageAsRead(message: MessageResponse): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.messageService.markAsRead(this.ownerId, message.id).subscribe({
+      next: () => {
+        this.successMessage = 'Messaggio segnato come letto.';
+        this.loadInbox();
+        this.loadConversation();
+        this.changeDetectorRef.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Errore durante l aggiornamento del messaggio.';
         this.changeDetectorRef.detectChanges();
       }
     });

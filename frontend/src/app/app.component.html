@@ -1,7 +1,7 @@
 <div class="page-container">
   <header class="header">
     <h1>MTG Collection Manager</h1>
-    <p>Gestione collezione e mazzi di Magic: The Gathering</p>
+    <p>Gestione collezione, mazzi e messaggi di Magic: The Gathering</p>
   </header>
 
   <main class="content">
@@ -21,17 +21,9 @@
         </button>
       </div>
 
-      <p class="loading" *ngIf="loading">
-        Ricerca in corso...
-      </p>
-
-      <p class="error" *ngIf="errorMessage">
-        {{ errorMessage }}
-      </p>
-
-      <p class="success" *ngIf="successMessage">
-        {{ successMessage }}
-      </p>
+      <p class="loading" *ngIf="loading">Ricerca in corso...</p>
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
     </section>
 
     <section class="card-result" *ngIf="card as selectedCard">
@@ -41,15 +33,12 @@
 
       <div class="card-info">
         <h2>{{ selectedCard.name }}</h2>
-
         <p><strong>Espansione:</strong> {{ selectedCard.expansion }}</p>
         <p><strong>Rarità:</strong> {{ selectedCard.rarity }}</p>
         <p><strong>Costo mana:</strong> {{ selectedCard.manaCost }}</p>
         <p><strong>Tipo:</strong> {{ selectedCard.typeLine }}</p>
 
-        <p class="oracle-text">
-          {{ selectedCard.oracleText }}
-        </p>
+        <p class="oracle-text">{{ selectedCard.oracleText }}</p>
 
         <div class="collection-form">
           <h3>Aggiungi alla collezione</h3>
@@ -95,6 +84,118 @@
       </div>
     </section>
 
+    <section class="messages-panel">
+      <h2>Messaggi tra utenti</h2>
+
+      <div class="message-layout">
+        <div class="message-box">
+          <h3>Invia messaggio</h3>
+
+          <label class="full-label">
+            Destinatario
+            <select [(ngModel)]="messageReceiverId">
+              <option [ngValue]="undefined">Seleziona destinatario</option>
+              <option *ngFor="let user of users" [ngValue]="user.id">
+                {{ user.username }} - {{ user.email }}
+              </option>
+            </select>
+          </label>
+
+          <label class="full-label">
+            Messaggio
+            <textarea [(ngModel)]="messageContent" placeholder="Scrivi un messaggio"></textarea>
+          </label>
+
+          <button type="button" (click)="sendMessage()" [disabled]="sendingMessage">
+            {{ sendingMessage ? 'Invio in corso...' : 'Invia messaggio' }}
+          </button>
+        </div>
+
+        <div class="message-box">
+          <div class="box-header">
+            <h3>Posta ricevuta</h3>
+            <button type="button" (click)="loadInbox()">Aggiorna</button>
+          </div>
+
+          <p class="loading" *ngIf="messageLoading">Caricamento messaggi...</p>
+
+          <div class="empty-message" *ngIf="!messageLoading && inboxMessages.length === 0">
+            Nessun messaggio ricevuto.
+          </div>
+
+          <div class="message-card" *ngFor="let message of inboxMessages" [class.unread]="!message.readMessage">
+            <p><strong>Da:</strong> {{ message.senderUsername }}</p>
+            <p>{{ message.content }}</p>
+            <p class="small-text">Inviato il: {{ message.sentAt }}</p>
+            <p class="small-text"><strong>Letto:</strong> {{ message.readMessage ? 'Sì' : 'No' }}</p>
+
+            <button
+              type="button"
+              *ngIf="!message.readMessage"
+              (click)="markMessageAsRead(message)"
+            >
+              Segna come letto
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="message-layout">
+        <div class="message-box">
+          <div class="box-header">
+            <h3>Messaggi inviati</h3>
+            <button type="button" (click)="loadSentMessages()">Aggiorna</button>
+          </div>
+
+          <div class="empty-message" *ngIf="sentMessages.length === 0">
+            Nessun messaggio inviato.
+          </div>
+
+          <div class="message-card" *ngFor="let message of sentMessages">
+            <p><strong>A:</strong> {{ message.receiverUsername }}</p>
+            <p>{{ message.content }}</p>
+            <p class="small-text">Inviato il: {{ message.sentAt }}</p>
+            <p class="small-text"><strong>Letto:</strong> {{ message.readMessage ? 'Sì' : 'No' }}</p>
+          </div>
+        </div>
+
+        <div class="message-box">
+          <h3>Conversazione</h3>
+
+          <label class="full-label">
+            Utente
+            <select [(ngModel)]="conversationUserId" (ngModelChange)="loadConversation()">
+              <option [ngValue]="undefined">Seleziona utente</option>
+              <option *ngFor="let user of users" [ngValue]="user.id">
+                {{ user.username }}
+              </option>
+            </select>
+          </label>
+
+          <div class="empty-message" *ngIf="conversationMessages.length === 0">
+            Nessun messaggio nella conversazione.
+          </div>
+
+          <div class="conversation-list" *ngIf="conversationMessages.length > 0">
+            <div
+              class="message-card"
+              *ngFor="let message of conversationMessages"
+              [class.own-message]="message.senderId === ownerId"
+              [class.unread]="!message.readMessage && message.receiverId === ownerId"
+            >
+              <p>
+                <strong>{{ message.senderUsername }}</strong>
+                →
+                <strong>{{ message.receiverUsername }}</strong>
+              </p>
+              <p>{{ message.content }}</p>
+              <p class="small-text">{{ message.sentAt }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="decks-panel">
       <h2>Gestione mazzi</h2>
 
@@ -132,9 +233,7 @@
         <div class="deck-selection">
           <h3>I miei mazzi</h3>
 
-          <p class="loading" *ngIf="deckLoading">
-            Caricamento mazzi...
-          </p>
+          <p class="loading" *ngIf="deckLoading">Caricamento mazzi...</p>
 
           <div class="form-row" *ngIf="decks.length > 0">
             <label>
@@ -219,14 +318,10 @@
           <p>{{ collectionTotalElements }} carte presenti</p>
         </div>
 
-        <button type="button" (click)="loadCollection()">
-          Aggiorna
-        </button>
+        <button type="button" (click)="loadCollection()">Aggiorna</button>
       </div>
 
-      <p class="loading" *ngIf="collectionLoading">
-        Caricamento collezione...
-      </p>
+      <p class="loading" *ngIf="collectionLoading">Caricamento collezione...</p>
 
       <div class="empty-message" *ngIf="!collectionLoading && collectionItems.length === 0">
         Nessuna carta presente nella collezione.

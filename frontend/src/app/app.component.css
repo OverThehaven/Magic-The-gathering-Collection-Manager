@@ -22,7 +22,8 @@
 
 .search-panel,
 .collection-panel,
-.decks-panel {
+.decks-panel,
+.messages-panel {
   padding: 20px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -85,7 +86,8 @@ button:disabled {
 .deck-create-form,
 .deck-selection,
 .deck-add-card,
-.deck-card-list {
+.deck-card-list,
+.message-box {
   margin-top: 18px;
   padding: 16px;
   border: 1px solid #ddd;
@@ -108,7 +110,8 @@ button:disabled {
 
 .form-row input,
 .form-row select,
-.full-label textarea {
+.full-label textarea,
+.full-label select {
   padding: 8px;
 }
 
@@ -125,7 +128,8 @@ button:disabled {
   margin-bottom: 16px;
 }
 
-.collection-header {
+.collection-header,
+.box-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -201,6 +205,38 @@ button:disabled {
 
 .deck-card-info p {
   margin: 3px 0;
+}
+
+.message-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.message-card {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+
+.message-card.unread {
+  border-color: #999;
+  background: #f6f6f6;
+}
+
+.message-card.own-message {
+  background: #f2f8ff;
+}
+
+.small-text {
+  font-size: 13px;
+  color: #666;
+}
+
+.conversation-list {
+  margin-top: 12px;
 }
 
 .empty-message {
